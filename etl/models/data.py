@@ -12,7 +12,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
-from etl.db import Base
+from db import Base
 
 
 class Signal(Base):
@@ -21,7 +21,9 @@ class Signal(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(255), nullable=False, index=True, unique=True)
 
-    data_points = relationship("Data", back_populates="signal")
+    data_points = relationship(
+        "Data", back_populates="signal", cascade="all, delete-orphan"
+    )
 
 
 class Data(Base):
@@ -34,10 +36,12 @@ class Data(Base):
 
     signal = relationship("Signal", back_populates="data_points")
 
-    __table_args__ = CheckConstraint(
-        and_(
-            cast(func.extract("minute", ts), Integer) % 10 == 0,
-            func.extract("second", ts) == 0,
+    __table_args__ = (
+        CheckConstraint(
+            and_(
+                cast(func.extract("minute", ts), Integer) % 10 == 0,
+                func.extract("second", ts) == 0,
+            ),
+            name="ts_must_be_exact_10_min_interval",
         ),
-        name="ts_must_be_exact_10_min_interval",
     )

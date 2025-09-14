@@ -4,13 +4,24 @@ from typing import Any, Dict
 import httpx
 import pandas as pd
 
-from etl.settings import API_BASE_URL
+from db import SessionLocal
+from models.data import Data as DataModel
+from models.data import Signal
+from settings import API_BASE_URL, get_logger, setup_logging
+
+# Configuração de logging
+setup_logging()
+logger = get_logger(__name__)
 
 
 class DataETL:
     def __init__(self):
         self.api_base_url = API_BASE_URL
         self.client = httpx.Client(timeout=30.0)
+
+    def _get_signals_map(self, session: SessionLocal) -> Dict[str, int]:
+        list_signals = session.query(Signal).all()
+        return {s.name: s.id for s in list_signals}
 
     def extract_available_fields(self) -> Dict[str, Any]:
         """
@@ -21,7 +32,7 @@ class DataETL:
             response.raise_for_status()
             return response.json()
         except httpx.RequestError as e:
-            print(f"ERRO: Não foi possível buscar os campos da API. Erro: {e}")
+            logger.error(f"Não foi possível buscar os campos da API: {e}")
             return {}
 
     def extract_data(
@@ -57,7 +68,7 @@ class DataETL:
             response.raise_for_status()
             json_response = response.json()
         except httpx.RequestError as e:
-            print(f"ERRO: Falha ao conectar à API na página 1: {e}")
+            logger.error(f"Falha ao conectar à API na página 1: {e}")
             return []
 
         extracted_data.extend(json_response.get("data", []))
@@ -73,28 +84,62 @@ class DataETL:
                     json_response = response.json()
                     extracted_data.extend(json_response.get("data", []))
                 except httpx.RequestError as e:
-                    print(f"ERRO: Falha ao conectar à API na página {page}: {e}")
+                    logger.error(f"Falha ao conectar à API na página {page}: {e}")
                     return []
 
         return extracted_data
 
     def transform_data(self, raw_data: list[dict]) -> pd.DataFrame:
         if not raw_data:
-            print("AVISO: Nenhum dado bruto para processar.")
+            logger.warning("Nenhum dado bruto para processar")
             return pd.DataFrame()
-        print("INFO: Processando e agregando dados com pandas...")
+
+        logger.info("Processando e agregando dados com pandas")
         df = pd.DataFrame(raw_data)
         df["ts"] = pd.to_datetime(df["ts"])
         df.set_index("ts", inplace=True)
-        transformed_data = df.resample("10T", closed="right").agg(
+
+        transformed_data = df.resample("10min", closed="right").agg(
             ["mean", "min", "max", "std"]
         )
         transformed_data.columns = [
             "_".join(col).strip() for col in transformed_data.columns.values
         ]
         transformed_data.reset_index(inplace=True)
-        print("INFO: Agregação concluída.")
+
+        logger.info(
+            f"Agregação concluída: {len(transformed_data)} intervalos de 10 minutos"
+        )
         return transformed_data
+
+    def load_data(self, session: SessionLocal, transformed_data: pd.DataFrame):
+        if transformed_data.empty:
+            logger.warning("Nenhum dado agregado para salvar")
+            return
+
+        logger.info("Iniciando gravação dos dados no banco")
+        signal_names = [col for col in transformed_data.columns if col != "ts"]
+        signal_map = self._get_signals_map(session)
+        data_points_to_add = []
+
+        for _, row in transformed_data.iterrows():
+            timestamp = row["ts"]
+            for signal_name in signal_names:
+                value = row[signal_name]
+                if pd.notna(value):
+                    data_points_to_add.append(
+                        DataModel(
+                            signal_id=signal_map[signal_name], ts=timestamp, value=value
+                        )
+                    )
+
+        try:
+            session.add_all(data_points_to_add)
+            session.commit()
+            logger.info(f"{len(data_points_to_add)} pontos de dados salvos no banco")
+        except Exception as e:
+            logger.error(f"Falha ao salvar os dados. Revertendo alterações: {e}")
+            session.rollback()
 
 
 def main():
@@ -140,15 +185,16 @@ def main():
         end_ts = datetime.strptime(args.end_ts, "%Y-%m-%d")
 
     except ValueError as e:
-        print(f"ERRO: Formato de data inválido. Use YYYY-MM-DD ou YYYY-MM-DDTHH:MM:SS")
-        print(f"Erro: {e}")
+        logger.error(
+            f"Formato de data inválido. Use YYYY-MM-DD ou YYYY-MM-DDTHH:MM:SS: {e}"
+        )
         return
 
     try:
         etl_processor = DataETL()
-
-        print(f"Extraindo dados de {start_ts} até {end_ts}")
-        print(f"Campos: {args.fields}")
+        session = SessionLocal()
+        logger.info(f"Iniciando ETL - Período: {start_ts.date()} até {end_ts.date()}")
+        logger.info(f"Campos solicitados: {args.fields}")
 
         raw_data = etl_processor.extract_data(
             start_ts=start_ts,
@@ -157,18 +203,26 @@ def main():
             page_size=args.page_size,
         )
 
-        print(f"Dados extraídos: {len(raw_data)} registros")
-        print(raw_data)
+        logger.info(f"Dados extraídos: {len(raw_data)} registros")
+
+        if raw_data:
+            logger.debug(f"Primeiros registros: {raw_data[:3]}")
 
         transformed_data = etl_processor.transform_data(raw_data)
-        print(transformed_data)
 
-        # 3. Carga (Load)
-        # save_data_to_db(session, transformed_data)
+        if not transformed_data.empty:
+            logger.debug(f"Dados transformados: {transformed_data.head()}")
+
+        etl_processor.load_data(session, transformed_data)
 
     except Exception as e:
-        print(f"ERRO durante execução do ETL: {e}")
+
+        logger.error(f"Erro durante execução do ETL: {e}")
+        session.rollback()
         return
+
+    finally:
+        session.close()
 
 
 if __name__ == "__main__":

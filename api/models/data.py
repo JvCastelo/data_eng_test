@@ -1,6 +1,6 @@
 from sqlalchemy import TIMESTAMP, Column, Float, Integer, func
 
-from api.db import Base
+from db import Base
 
 
 class Data(Base):

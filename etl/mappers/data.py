@@ -1,10 +1,10 @@
 from typing import List
 
-from etl.dtos import Data as DataDTO
-from etl.dtos import Signal as SignalDTO
-from etl.dtos import SignalWithData as SignalWithDataDTO
-from etl.models import Data as DataModel
-from etl.models import Signal as SignalModel
+from dtos import Data as DataDTO
+from dtos import Signal as SignalDTO
+from dtos import SignalWithData as SignalWithDataDTO
+from models import Data as DataModel
+from models import Signal as SignalModel
 
 
 def to_signal_dto(model: SignalModel) -> SignalDTO:

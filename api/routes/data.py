@@ -6,10 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session, class_mapper
 
-from api.db import SessionLocal
-from api.dtos.data import DataResponseSchema, DataSchema, PagingSchema
-from api.mappers.data import to_dto
-from api.models.data import Data as DataModel
+from db import SessionLocal
+from dtos.data import DataResponseSchema, DataSchema, PagingSchema
+from mappers.data import to_dto
+from models.data import Data as DataModel
 
 router = APIRouter(prefix="/api/v1/data", tags=["Data"])
 
