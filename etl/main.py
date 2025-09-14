@@ -6,7 +6,7 @@ import pandas as pd
 
 from db import SessionLocal
 from models.data import Data as DataModel
-from models.data import Signal
+from services import DataService, SignalService
 from settings import API_BASE_URL, get_logger, setup_logging
 
 # Configuração de logging
@@ -18,10 +18,11 @@ class DataETL:
     def __init__(self):
         self.api_base_url = API_BASE_URL
         self.client = httpx.Client(timeout=30.0)
+        self.signal_service = SignalService()
+        self.data_service = DataService()
 
     def _get_signals_map(self, session: SessionLocal) -> Dict[str, int]:
-        list_signals = session.query(Signal).all()
-        return {s.name: s.id for s in list_signals}
+        return self.signal_service.get_signals_map(session)
 
     def extract_available_fields(self) -> Dict[str, Any]:
         """
@@ -133,13 +134,11 @@ class DataETL:
                         )
                     )
 
-        try:
-            session.add_all(data_points_to_add)
-            session.commit()
+        success = self.data_service.bulk_insert_data_points(session, data_points_to_add)
+        if success:
             logger.info(f"{len(data_points_to_add)} pontos de dados salvos no banco")
-        except Exception as e:
-            logger.error(f"Falha ao salvar os dados. Revertendo alterações: {e}")
-            session.rollback()
+        else:
+            logger.error("Falha ao salvar os dados")
 
 
 def main():

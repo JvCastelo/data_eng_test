@@ -4,7 +4,7 @@ Testes essenciais para scripts auxiliares.
 
 import pytest
 
-from models.data import Signal
+from services import SignalService
 
 
 class TestScripts:
@@ -32,7 +32,9 @@ class TestScripts:
 
     @pytest.mark.database
     def test_populate_signals(self, test_session):
-        """Testa população de sinais."""
+        """Testa população de sinais usando SignalService."""
+        signal_service = SignalService()
+
         # Simula o script populate_signals
         base_signals = ["test_signal"]
         suffixes = ["mean", "min"]
@@ -42,13 +44,15 @@ class TestScripts:
             for suffix in suffixes:
                 all_signals.append(f"{base}_{suffix}")
 
-        # Adiciona sinais
-        signals_to_add = [Signal(name=name) for name in all_signals]
-        test_session.add_all(signals_to_add)
-        test_session.commit()
+        # Adiciona sinais usando o serviço
+        signals_data = [{"name": name} for name in all_signals]
+        created_signals = signal_service.create_many(test_session, signals_data)
 
-        # Verifica que foram adicionados
-        count = (
-            test_session.query(Signal).filter(Signal.name.like("test_signal_%")).count()
-        )
-        assert count == 2
+        assert len(created_signals) == 2
+
+        # Verifica que foram adicionados usando o serviço
+        signal_names = signal_service.get_all_names(test_session)
+        test_signal_names = [
+            name for name in signal_names if name.startswith("test_signal_")
+        ]
+        assert len(test_signal_names) == 2

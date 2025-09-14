@@ -1,5 +1,4 @@
-from db import SessionLocal
-from models.data import Signal
+from services import SignalService
 
 # Sinais base - apenas os nomes principais
 base_signals = ["wind_speed", "power", "ambient_temperature"]
@@ -13,31 +12,32 @@ for base in base_signals:
     for suffix in suffixes:
         all_signals.append(f"{base}_{suffix}")
 
-session = SessionLocal()
+signal_service = SignalService()
+session = signal_service.get_session()
 
 try:
-    # UMA ÚNICA query para buscar apenas os sinais que queremos verificar
-    existing_signals = {
-        s.name
-        for s in session.query(Signal.name).filter(Signal.name.in_(all_signals)).all()
-    }
+    # Busca sinais existentes usando o serviço
+    existing_signals = set(signal_service.get_all_names(session))
 
     # Identifica apenas os sinais que precisam ser adicionados
     new_signals = [name for name in all_signals if name not in existing_signals]
 
-    # Adiciona todos os novos sinais de uma vez
+    # Adiciona todos os novos sinais de uma vez usando o serviço
     if new_signals:
-        signals_to_add = [Signal(name=name) for name in new_signals]
-        session.add_all(signals_to_add)
-        print(f"{len(new_signals)} novos sinais adicionados: {', '.join(new_signals)}")
+        signals_data = [{"name": name} for name in new_signals]
+        created_signals = signal_service.create_many(session, signals_data)
+        if created_signals:
+            print(
+                f"{len(new_signals)} novos sinais adicionados: {', '.join(new_signals)}"
+            )
+        else:
+            print("Erro ao criar sinais")
     else:
         print("Todos os sinais já existem")
 
-    session.commit()
     print(f"Processo concluído!")
 
 except Exception as e:
-    session.rollback()
     print(f"Error: {e}")
 finally:
     session.close()
