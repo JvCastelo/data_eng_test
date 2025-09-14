@@ -1,19 +1,18 @@
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import List
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class DataSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     ts: datetime
     wind_speed: float | None = Field(default=None, description="Velocidade do vento")
     power: float | None = Field(default=None, description="Potência")
     ambient_temperature: float | None = Field(
         default=None, description="Temperatura ambiente"
     )
-
-    class Config:
-        from_attributes = True
 
 
 class PagingSchema(BaseModel):

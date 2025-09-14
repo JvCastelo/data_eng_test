@@ -7,7 +7,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, class_mapper
 
 from db import SessionLocal
-from dtos.data import DataResponseSchema, PagingSchema
+from dtos.data import DataResponseSchema, DataSchema, PagingSchema
 from mappers.data import to_dto
 from models.data import Data as DataModel
 
@@ -27,12 +27,31 @@ def get_db():
         db.close()
 
 
-AVAILABLE_COLUMNS = {c.key: c for c in class_mapper(DataModel).columns}
+def ensure_required_fields(
+    selected_fields: set[str], required_fields: list[str] = None
+) -> set[str]:
+    """
+    Garante que campos obrigatórios sejam sempre incluídos na consulta.
+
+    Args:
+        selected_fields: Campos selecionados pelo usuário
+        required_fields: Campos obrigatórios (padrão: ["ts"])
+
+    Returns:
+        Conjunto de campos incluindo os obrigatórios
+    """
+    if required_fields is None:
+        required_fields = ["ts"]
+
+    return selected_fields.union(required_fields)
+
+
+AVAILABLE_COLUMNS = list(DataSchema.model_fields.keys())
 
 
 @router.get("/fields", response_model=List[str], summary="Get available fields")
 def get_available_fields(db: Session = Depends(get_db)):
-    return list(AVAILABLE_COLUMNS.keys())
+    return AVAILABLE_COLUMNS
 
 
 @router.get(
@@ -54,22 +73,19 @@ def get_data(
 ):
     if fields:
         selected_field_names = set(field.strip() for field in fields.split(","))
-        invalid_fields = selected_field_names - set(AVAILABLE_COLUMNS.keys())
+        invalid_fields = selected_field_names - set(AVAILABLE_COLUMNS)
         if invalid_fields:
             raise HTTPException(
                 status_code=400,
                 detail=f"Campos inválidos: {', '.join(invalid_fields)}",
             )
-        selected_field_names.add("ts")
+        selected_field_names = ensure_required_fields(selected_field_names)
         selectable_columns = [
-            AVAILABLE_COLUMNS[field] for field in selected_field_names
+            getattr(DataModel, field) for field in selected_field_names
         ]
+        base_query = db.query(*selectable_columns)
     else:
-        selectable_columns = [
-            AVAILABLE_COLUMNS[field] for field in AVAILABLE_COLUMNS.keys()
-        ]
-
-    base_query = db.query(*selectable_columns)
+        base_query = db.query(DataModel)
 
     if start_ts:
         base_query = base_query.filter(DataModel.ts >= start_ts)
