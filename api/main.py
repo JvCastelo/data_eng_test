@@ -1,11 +1,15 @@
 from fastapi import FastAPI
 
+from routes.auth import router as auth_router
 from routes.data import router as data_router
 
 app = FastAPI(
-    title="Teste Data Eng", description="API para teste de Data Eng", version="0.1.0"
+    title="Teste Data Eng",
+    description="API para teste de Data Eng com autenticação por API Key",
+    version="0.1.0",
 )
 
+app.include_router(auth_router)
 app.include_router(data_router)
 
 

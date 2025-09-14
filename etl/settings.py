@@ -17,6 +17,7 @@ DATABASE_URL_TARGET = f"postgresql+psycopg2://{DB_USER_TARGET}:{DB_PASSWORD_TARG
 
 # API Configuration
 API_BASE_URL = os.getenv("API_BASE_URL")
+API_KEY = os.getenv("API_KEY")
 
 # Logging Configuration
 LOG_LEVEL = os.getenv("LOG_LEVEL", "DEBUG").upper()

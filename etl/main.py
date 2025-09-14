@@ -7,7 +7,7 @@ import pandas as pd
 from db import SessionLocal
 from models.data import Data as DataModel
 from services import DataService, SignalService
-from settings import API_BASE_URL, get_logger, setup_logging
+from settings import API_BASE_URL, API_KEY, get_logger, setup_logging
 
 # Configuração de logging
 setup_logging()
@@ -17,7 +17,16 @@ logger = get_logger(__name__)
 class DataETL:
     def __init__(self):
         self.api_base_url = API_BASE_URL
-        self.client = httpx.Client(timeout=30.0)
+        self.api_key = API_KEY
+
+        # Configuração do cliente HTTP com autenticação
+        headers = {}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+            # Alternativa comum: headers["X-API-Key"] = self.api_key
+            # Ou: headers["api-key"] = self.api_key
+
+        self.client = httpx.Client(timeout=30.0, headers=headers)
         self.signal_service = SignalService()
         self.data_service = DataService()
 
@@ -28,12 +37,26 @@ class DataETL:
         """
         Busca os campos (sinais) disponíveis no endpoint /fields.
         """
+        if not self.api_key:
+            logger.error("API_KEY não configurada. Verifique o arquivo .env")
+            return {}
+
         try:
             response = self.client.get(f"{self.api_base_url}/fields")
             response.raise_for_status()
             return response.json()
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 401:
+                logger.error("Erro de autenticação: API_KEY inválida ou expirada")
+            elif e.response.status_code == 403:
+                logger.error("Acesso negado: verifique as permissões da API_KEY")
+            else:
+                logger.error(
+                    f"Erro HTTP {e.response.status_code} ao buscar campos da API: {e}"
+                )
+            return {}
         except httpx.RequestError as e:
-            logger.error(f"Não foi possível buscar os campos da API: {e}")
+            logger.error(f"Não foi possível conectar à API: {e}")
             return {}
 
     def extract_data(
@@ -46,6 +69,10 @@ class DataETL:
         """
         Busca dados de vento e potência para uma data específica.
         """
+        if not self.api_key:
+            logger.error("API_KEY não configurada. Verifique o arquivo .env")
+            return []
+
         start_ts = datetime(
             start_ts.year, start_ts.month, start_ts.day, 0, 0, 0
         ).isoformat()
@@ -68,6 +95,16 @@ class DataETL:
             response = self.client.get(f"{self.api_base_url}", params=params)
             response.raise_for_status()
             json_response = response.json()
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 401:
+                logger.error("Erro de autenticação: API_KEY inválida ou expirada")
+            elif e.response.status_code == 403:
+                logger.error("Acesso negado: verifique as permissões da API_KEY")
+            else:
+                logger.error(
+                    f"Erro HTTP {e.response.status_code} ao buscar dados na página 1: {e}"
+                )
+            return []
         except httpx.RequestError as e:
             logger.error(f"Falha ao conectar à API na página 1: {e}")
             return []
@@ -84,6 +121,20 @@ class DataETL:
                     response.raise_for_status()
                     json_response = response.json()
                     extracted_data.extend(json_response.get("data", []))
+                except httpx.HTTPStatusError as e:
+                    if e.response.status_code == 401:
+                        logger.error(
+                            "Erro de autenticação: API_KEY inválida ou expirada"
+                        )
+                    elif e.response.status_code == 403:
+                        logger.error(
+                            "Acesso negado: verifique as permissões da API_KEY"
+                        )
+                    else:
+                        logger.error(
+                            f"Erro HTTP {e.response.status_code} ao buscar dados na página {page}: {e}"
+                        )
+                    return []
                 except httpx.RequestError as e:
                     logger.error(f"Falha ao conectar à API na página {page}: {e}")
                     return []

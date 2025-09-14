@@ -4,6 +4,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from auth import get_current_user
 from db import SessionLocal
 from dtos.data import DataResponseSchema, DataSchema
 from services import DataService
@@ -32,7 +33,10 @@ def get_data_service(db: Session = Depends(get_db)) -> DataService:
 
 
 @router.get("/fields", response_model=List[str], summary="Get available fields")
-def get_available_fields(data_service: DataService = Depends(get_data_service)):
+def get_available_fields(
+    data_service: DataService = Depends(get_data_service),
+    current_user: dict = Depends(get_current_user),
+):
     return data_service.get_available_fields()
 
 
@@ -52,6 +56,7 @@ def get_data(
     page: int = Query(1, ge=1, description="Número da página"),
     page_size: int = Query(25, ge=1, le=1000, description="Número de itens por página"),
     data_service: DataService = Depends(get_data_service),
+    current_user: dict = Depends(get_current_user),
 ):
     # Validação de campos se fornecidos
     if fields:
