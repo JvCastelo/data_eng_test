@@ -1,25 +1,21 @@
 [project]
 name = "teste-data-eng"
 version = "0.1.0"
-description = "Add your description here"
+description = "Projeto completo de Data Engineering com API e ETL"
 readme = "README.md"
 requires-python = ">=3.12"
+
+# Dependências compartilhadas entre todos os componentes
 dependencies = [
-    "fastapi>=0.116.1",
-    "psycopg2-binary>=2.9.10",
-    "pydantic>=2.11.9",
     "python-dotenv>=1.1.1",
-    "sqlalchemy>=2.0.43",
-    "uvicorn[standard]>=0.35.0",
 ]
 
 [dependency-groups]
 dev = [
-    "httpx>=0.28.1",
-    "pytest>=8.4.2",
+    "pre-commit>=3.0.0",
+    "mypy>=1.0.0",
 ]
 
-[tool.pytest.ini_options]
-pythonpath = [
-    "."
-]
+# Workspace configuration
+[tool.uv.workspace]
+members = ["api", "etl"]

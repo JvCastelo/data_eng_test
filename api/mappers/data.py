@@ -1,5 +1,5 @@
-from dtos.data import DataSchema as DataDTO
-from models.data import Data as DataModel
+from api.dtos.data import DataSchema as DataDTO
+from api.models.data import Data as DataModel
 
 
 def to_dto(data_model: DataModel) -> DataDTO:
