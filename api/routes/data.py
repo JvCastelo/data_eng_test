@@ -88,7 +88,7 @@ def get_data(
         base_query = db.query(DataModel)
 
     if start_ts:
-        base_query = base_query.filter(DataModel.ts >= start_ts)
+        base_query = base_query.filter(DataModel.ts > start_ts)
     if end_ts:
         base_query = base_query.filter(DataModel.ts <= end_ts)
 
