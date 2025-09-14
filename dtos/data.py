@@ -4,22 +4,13 @@ from typing import Any, Dict, List
 from pydantic import BaseModel, Field
 
 
-class DataSchemaBase(BaseModel):
+class DataSchema(BaseModel):
     ts: datetime
     wind_speed: float | None = Field(default=None, description="Velocidade do vento")
     power: float | None = Field(default=None, description="Potência")
     ambient_temperature: float | None = Field(
         default=None, description="Temperatura ambiente"
     )
-
-
-class DataSchemaCreate(DataSchemaBase):
-    pass
-
-
-class DataSchema(DataSchemaBase):
-    id: int
-    created_at: datetime
 
     class Config:
         from_attributes = True
@@ -34,5 +25,5 @@ class PagingSchema(BaseModel):
 
 
 class DataResponseSchema(BaseModel):
-    data: List[Dict[str, Any]]
+    data: List[DataSchema]
     paging: PagingSchema

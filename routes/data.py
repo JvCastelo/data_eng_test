@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, class_mapper
 
 from db import SessionLocal
 from dtos.data import DataResponseSchema, PagingSchema
+from mappers.data import to_dto
 from models.data import Data as DataModel
 
 router = APIRouter(prefix="/api/v1/data", tags=["Data"])
@@ -34,7 +35,12 @@ def get_available_fields(db: Session = Depends(get_db)):
     return list(AVAILABLE_COLUMNS.keys())
 
 
-@router.get("/", response_model=DataResponseSchema, summary="Get data with pagination")
+@router.get(
+    "/",
+    response_model=DataResponseSchema,
+    response_model_exclude_none=True,
+    summary="Get data with pagination",
+)
 def get_data(
     start_ts: datetime | None = Query(None, description="Data de início"),
     end_ts: datetime | None = Query(None, description="Data de fim"),
@@ -47,7 +53,7 @@ def get_data(
     db: Session = Depends(get_db),
 ):
     if fields:
-        selected_field_names = set(fields.strip() for field in fields.split(","))
+        selected_field_names = set(field.strip() for field in fields.split(","))
         invalid_fields = selected_field_names - set(AVAILABLE_COLUMNS.keys())
         if invalid_fields:
             raise HTTPException(
@@ -78,7 +84,7 @@ def get_data(
     results = (
         base_query.order_by(DataModel.ts.desc()).offset(offset).limit(page_size).all()
     )
-    data = [row._mapping for row in results]
+    data = [to_dto(row) for row in results]
 
     return DataResponseSchema(
         data=data,
