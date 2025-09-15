@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  # Banco de dados PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: teste_data_eng_postgres
+    environment:
+      POSTGRES_DB: teste_data_eng
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - data_eng_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Serviço API
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: teste_data_eng_api
+    environment:
+      - DB_HOST_TARGET=postgres
+      - DB_PORT_TARGET=5432
+      - DB_NAME_TARGET=teste_data_eng
+      - DB_USER_TARGET=postgres
+      - DB_PASSWORD_TARGET=postgres123
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - data_eng_network
+    volumes:
+      - ./api:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Serviço ETL
+  etl:
+    build:
+      context: ./etl
+      dockerfile: Dockerfile
+    container_name: teste_data_eng_etl
+    environment:
+      - DB_HOST_TARGET=postgres
+      - DB_PORT_TARGET=5432
+      - DB_NAME_TARGET=teste_data_eng
+      - DB_USER_TARGET=postgres
+      - DB_PASSWORD_TARGET=postgres123
+      - API_BASE_URL=http://api:8000
+      - API_KEY=your_api_key_here
+      - LOG_LEVEL=INFO
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+    networks:
+      - data_eng_network
+    volumes:
+      - ./etl:/app
+    # Comando padrão para execução manual do ETL
+    command: tail -f /dev/null
+
+volumes:
+  postgres_data:
+
+networks:
+  data_eng_network:
+    driver: bridge
+

@@ -5,12 +5,6 @@ from models.data import User
 
 
 def create_user(username: str):
-    """
-    Cria um novo usuário no banco de dados.
-
-    Args:
-        username: O nome de usuário a ser criado.
-    """
 
     session = SessionLocal()
 

@@ -1,20 +1,14 @@
-"""
-Testes para os modelos de dados.
-"""
-
 import hashlib
 
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
 from db import Base
 from models.data import ApiKey, Data, User
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 
 @pytest.fixture(scope="function")
 def test_db():
-    """Fixture para banco de teste."""
     engine = create_engine(
         "sqlite:///./test_models.db", connect_args={"check_same_thread": False}
     )
@@ -29,10 +23,8 @@ def test_db():
 
 
 class TestUserModel:
-    """Testes para o modelo User."""
 
     def test_create_user(self, test_db):
-        """Testa criação de usuário."""
         user = User(username="testuser")
         test_db.add(user)
         test_db.commit()
@@ -42,41 +34,35 @@ class TestUserModel:
         assert user.username == "testuser"
 
     def test_user_unique_username(self, test_db):
-        """Testa que username deve ser único."""
         user1 = User(username="testuser")
-        user2 = User(username="testuser")  # Mesmo username
+        user2 = User(username="testuser")
 
         test_db.add(user1)
         test_db.commit()
 
         test_db.add(user2)
-        with pytest.raises(Exception):  # Deve falhar por violação de constraint
+        with pytest.raises(Exception):
             test_db.commit()
 
     def test_user_relationship_with_api_keys(self, test_db):
-        """Testa relacionamento entre User e ApiKey."""
         user = User(username="testuser")
         test_db.add(user)
         test_db.commit()
         test_db.refresh(user)
 
-        # Cria API key para o usuário
         api_key = ApiKey(
             user_id=user.id, hashed_key="test-hash", description="Test Key"
         )
         test_db.add(api_key)
         test_db.commit()
 
-        # Verifica relacionamento
         assert len(user.api_keys) == 1
         assert user.api_keys[0].description == "Test Key"
 
 
 class TestApiKeyModel:
-    """Testes para o modelo ApiKey."""
 
     def test_create_api_key(self, test_db):
-        """Testa criação de API key."""
         user = User(username="testuser")
         test_db.add(user)
         test_db.commit()
@@ -99,7 +85,6 @@ class TestApiKeyModel:
         assert api_key.is_active is True
 
     def test_api_key_default_values(self, test_db):
-        """Testa valores padrão da API key."""
         user = User(username="testuser")
         test_db.add(user)
         test_db.commit()
@@ -110,12 +95,11 @@ class TestApiKeyModel:
         test_db.commit()
         test_db.refresh(api_key)
 
-        assert api_key.is_active is True  # Valor padrão
+        assert api_key.is_active is True
         assert api_key.description is None
         assert api_key.created_at is not None
 
     def test_api_key_unique_hash(self, test_db):
-        """Testa que hashed_key deve ser único."""
         user = User(username="testuser")
         test_db.add(user)
         test_db.commit()
@@ -128,11 +112,10 @@ class TestApiKeyModel:
         test_db.commit()
 
         test_db.add(api_key2)
-        with pytest.raises(Exception):  # Deve falhar por violação de constraint
+        with pytest.raises(Exception):
             test_db.commit()
 
     def test_api_key_relationship_with_user(self, test_db):
-        """Testa relacionamento entre ApiKey e User."""
         user = User(username="testuser")
         test_db.add(user)
         test_db.commit()
@@ -145,16 +128,13 @@ class TestApiKeyModel:
         test_db.commit()
         test_db.refresh(api_key)
 
-        # Verifica relacionamento
         assert api_key.user.username == "testuser"
         assert api_key.user.id == user.id
 
 
 class TestDataModel:
-    """Testes para o modelo Data."""
 
     def test_create_data_record(self, test_db):
-        """Testa criação de registro de dados."""
         from datetime import datetime
 
         data_record = Data(
@@ -171,7 +151,6 @@ class TestDataModel:
         assert data_record.created_at is not None
 
     def test_data_record_optional_fields(self, test_db):
-        """Testa criação de registro com campos opcionais."""
         from datetime import datetime
 
         data_record = Data(ts=datetime.now())
@@ -186,10 +165,8 @@ class TestDataModel:
 
 
 class TestHashFunction:
-    """Testes para função de hash."""
 
     def test_hash_consistency(self):
-        """Testa que o hash é consistente."""
         api_key = "test-api-key-123"
         hash1 = hashlib.sha256(api_key.encode()).hexdigest()
         hash2 = hashlib.sha256(api_key.encode()).hexdigest()
@@ -197,7 +174,6 @@ class TestHashFunction:
         assert hash1 == hash2
 
     def test_hash_different_keys(self):
-        """Testa que keys diferentes geram hashes diferentes."""
         key1 = "test-key-1"
         key2 = "test-key-2"
 
@@ -207,8 +183,7 @@ class TestHashFunction:
         assert hash1 != hash2
 
     def test_hash_length(self):
-        """Testa que o hash tem o tamanho correto."""
         api_key = "test-api-key"
         hash_result = hashlib.sha256(api_key.encode()).hexdigest()
 
-        assert len(hash_result) == 64  # SHA256 produz hash de 64 caracteres hex
+        assert len(hash_result) == 64

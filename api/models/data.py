@@ -1,3 +1,4 @@
+from db import Base
 from sqlalchemy import (
     TIMESTAMP,
     Boolean,
@@ -11,13 +12,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
-from db import Base
-
 
 class Data(Base):
-    """
-    Modelo SQLAlchemy que representa a tabela 'data' no banco de dados.
-    """
 
     __tablename__ = "data"
 

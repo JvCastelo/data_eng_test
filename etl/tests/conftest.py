@@ -1,18 +1,12 @@
-"""
-Configuração global para testes pytest.
-"""
-
 import os
 import sys
 from datetime import datetime
-from typing import Generator
 
 import pandas as pd
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-# Adiciona o diretório raiz ao path para imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from db import Base, SessionLocal
@@ -21,7 +15,7 @@ from models.data import Data, Signal
 
 @pytest.fixture(scope="session")
 def test_engine():
-    """Engine de teste usando SQLite em memória."""
+
     engine = create_engine("sqlite:///:memory:", echo=False)
     Base.metadata.create_all(engine)
     return engine
@@ -29,7 +23,7 @@ def test_engine():
 
 @pytest.fixture(scope="function")
 def test_session(test_engine):
-    """Sessão de teste isolada para cada teste."""
+
     Session = sessionmaker(bind=test_engine)
     session = Session()
     yield session
@@ -38,7 +32,7 @@ def test_session(test_engine):
 
 @pytest.fixture(scope="function")
 def sample_signals(test_session):
-    """Cria sinais de exemplo para testes."""
+
     # Limpa sinais existentes primeiro
     test_session.query(Signal).delete()
     test_session.commit()
@@ -59,7 +53,7 @@ def sample_signals(test_session):
 
 @pytest.fixture(scope="function")
 def sample_data(test_session, sample_signals):
-    """Cria dados de exemplo para testes."""
+
     # Limpa dados existentes primeiro
     test_session.query(Data).delete()
     test_session.commit()
@@ -88,7 +82,7 @@ def sample_data(test_session, sample_signals):
 
 @pytest.fixture
 def sample_raw_data():
-    """Dados brutos de exemplo da API."""
+
     return [
         {
             "ts": "2024-01-01T10:00:00Z",
@@ -113,7 +107,7 @@ def sample_raw_data():
 
 @pytest.fixture
 def sample_transformed_data():
-    """Dados transformados de exemplo."""
+
     return pd.DataFrame(
         {
             "ts": [
@@ -132,7 +126,7 @@ def sample_transformed_data():
 
 @pytest.fixture
 def mock_httpx_client():
-    """Mock do cliente httpx para testes."""
+
     from unittest.mock import Mock
 
     mock_response = Mock()

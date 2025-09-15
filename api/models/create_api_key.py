@@ -7,13 +7,6 @@ from models.data import ApiKey
 
 
 def create_api_key(user_id: int, description: str):
-    """
-    Cria uma nova chave API no banco de dados.
-
-    Args:
-        user_id: O ID do usuário a ser criado a chave API.
-        description: A descrição da chave API.
-    """
 
     session = SessionLocal()
 
@@ -25,10 +18,8 @@ def create_api_key(user_id: int, description: str):
             print(f"Erro: A chave API '{user_id}' já existe.")
             return
 
-        # Gera uma chave segura e aleatória
         api_key_plain = secrets.token_urlsafe(32)
 
-        # Cria o hash da chave
         hashed_key = hashlib.sha256(api_key_plain.encode()).hexdigest()
 
         new_api_key = ApiKey(
@@ -37,12 +28,12 @@ def create_api_key(user_id: int, description: str):
 
         session.add(new_api_key)
         session.commit()
-        session.refresh(new_api_key)  # Atualiza o objeto com o ID gerado
+        session.refresh(new_api_key)
 
         print(f"Sucesso! Chave API criada com o ID: {new_api_key.id}")
         print(f"API Key: {api_key_plain}")
         print(
-            "⚠️  IMPORTANTE: Salve esta chave em local seguro! Ela não será mostrada novamente."
+            "IMPORTANTE: Salve esta chave em local seguro! Ela não será mostrada novamente."
         )
 
     except Exception as e:

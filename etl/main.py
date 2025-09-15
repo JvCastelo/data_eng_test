@@ -3,13 +3,11 @@ from typing import Any, Dict
 
 import httpx
 import pandas as pd
-
 from db import SessionLocal
 from models.data import Data as DataModel
 from services import DataService, SignalService
 from settings import API_BASE_URL, API_KEY, get_logger, setup_logging
 
-# Configuração de logging
 setup_logging()
 logger = get_logger(__name__)
 
@@ -19,12 +17,9 @@ class DataETL:
         self.api_base_url = API_BASE_URL
         self.api_key = API_KEY
 
-        # Configuração do cliente HTTP com autenticação
         headers = {}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
-            # Alternativa comum: headers["X-API-Key"] = self.api_key
-            # Ou: headers["api-key"] = self.api_key
 
         self.client = httpx.Client(timeout=30.0, headers=headers)
         self.signal_service = SignalService()
@@ -34,9 +29,7 @@ class DataETL:
         return self.signal_service.get_signals_map(session)
 
     def extract_available_fields(self) -> Dict[str, Any]:
-        """
-        Busca os campos (sinais) disponíveis no endpoint /fields.
-        """
+        """ """
         if not self.api_key:
             logger.error("API_KEY não configurada. Verifique o arquivo .env")
             return {}
@@ -66,9 +59,6 @@ class DataETL:
         fields: list[str],
         page_size: int = 25,
     ) -> Dict[str, Any]:
-        """
-        Busca dados de vento e potência para uma data específica.
-        """
         if not self.api_key:
             logger.error("API_KEY não configurada. Verifique o arquivo .env")
             return []
@@ -193,9 +183,7 @@ class DataETL:
 
 
 def main():
-    """
-    Orquestra todo o processo de ETL.
-    """
+
     import argparse
 
     parser = argparse.ArgumentParser(description="ETL para dados de vento")

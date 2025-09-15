@@ -1,23 +1,17 @@
 from datetime import datetime
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
-
 from auth import get_current_user
 from db import SessionLocal
 from dtos.data import DataResponseSchema, DataSchema
+from fastapi import APIRouter, Depends, HTTPException, Query
 from services import DataService
+from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/api/v1/data", tags=["Data"])
 
 
 def get_db():
-    """
-    Para cada requisição à API, ela cria uma nova sessão com o banco,
-    disponibiliza essa sessão para a rota e garante que ela seja
-    fechada ao final, mesmo que ocorra um erro.
-    """
     db = SessionLocal()
     try:
         yield db
@@ -26,9 +20,6 @@ def get_db():
 
 
 def get_data_service(db: Session = Depends(get_db)) -> DataService:
-    """
-    Dependency para criar uma instância do DataService com a sessão do banco.
-    """
     return DataService(db)
 
 
@@ -58,7 +49,6 @@ def get_data(
     data_service: DataService = Depends(get_data_service),
     current_user: dict = Depends(get_current_user),
 ):
-    # Validação de campos se fornecidos
     if fields:
         available_fields = data_service.get_available_fields()
         selected_field_names = set(field.strip() for field in fields.split(","))
